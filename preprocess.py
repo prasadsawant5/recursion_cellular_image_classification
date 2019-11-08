@@ -2,10 +2,10 @@ import numpy as np
 import cv2
 import os
 from tqdm import tqdm
-import modin.pandas as pd
+import pandas as pd
 import pydicom
 
-os.environ["MODIN_ENGINE"] = "dask"
+# os.environ["MODIN_ENGINE"] = "dask"
 
 TRAIN = './stage_1_train_images/'
 TRAIN_CSV = './stage_1_train.csv'
@@ -13,7 +13,14 @@ DATA = './data/'
 NONE = 'none/'
 TOTAL_LENGTH = 674258
 
-CLASSES = ['subdural', 'epidural', 'intraparenchymal', 'intraventricular', 'subarachnoid' ]
+CLASSES = [ 'subdural', 'epidural', 'intraparenchymal', 'intraventricular', 'subarachnoid' ]
+
+subdural = set()
+epidural = set()
+intraparenchymal = set()
+intraventricular = set()
+subarachnoid = set()
+none = set()
 
 def convert_to_jpeg(dcm_path, jpeg_path):
     try:
@@ -25,12 +32,22 @@ def convert_to_jpeg(dcm_path, jpeg_path):
     except Exception as e:
         print(e)
         print(TRAIN + f_name)
+        print()
+        print()
+
+        print('subdural intersection none: {}'.format(str(none.intersection(subdural))))
+        print('epidural intersection none: {}'.format(str(none.intersection(epidural))))
+        print('intraparenchymal intersection none: {}'.format(str(none.intersection(intraparenchymal))))
+        print('intraventricular intersection none: {}'.format(str(none.intersection(intraventricular))))
+        print('subarachnoid intersection none: {}'.format(str(none.intersection(subarachnoid))))
 
 if __name__ == '__main__':
     labels_freq = dict()
     none_dict = dict()
 
     csv = pd.read_csv(TRAIN_CSV)
+    csv.set_index('ID', inplace=True)
+
 
     if not os.path.exists(DATA):
         os.mkdir(DATA)
@@ -40,24 +57,46 @@ if __name__ == '__main__':
         if not os.path.exists(DATA + c):
             os.mkdir(DATA + c)
 
-    with tqdm(total=len(csv)) as pbar:
-        for index, row in csv.iterrows():
-            f_name = row['ID'].split('_')[0] + '_' + row['ID'].split('_')[1]
-            label = row['ID'].split('_')[-1]
-            probability = float(row['Label'])
+    for f in tqdm(os.listdir(TRAIN)):
+        f_name = f.split('.')[0]
 
-            if label == 'any':
-                continue
+        any_row = csv.loc[f_name + '_any']
 
-            is_any_class = False
+        if float(any_row.values[0]) > 0.0:
+            subdural_row = csv.loc[f_name + '_subdural']
+            if float(subdural_row.values[0]) > 0.0:
+                convert_to_jpeg(TRAIN + f_name + '.dcm', DATA + CLASSES[0] + '/' + f_name + '.jpg')
+                subdural.add(f_name + '.dcm')
 
-            for c in CLASSES:
-                if c == label and probability > 0.0:
-                    is_any_class = True
-                    convert_to_jpeg(TRAIN + f_name + '.dcm', DATA + label + '/' + f_name + '.jpg')
+            epidural_row = csv.loc[f_name + '_epidural']
+            if float(epidural_row.values[0]) > 0.0:
+                convert_to_jpeg(TRAIN + f_name + '.dcm', DATA + CLASSES[1] + '/' + f_name + '.jpg')
+                epidural.add(f_name + '.dcm')
 
-            if not is_any_class:
-                convert_to_jpeg(TRAIN + f_name + '.dcm', DATA +NONE + f_name + '.jpg')
-                
+            intraparenchymal_row = csv.loc[f_name + '_intraparenchymal']
+            if float(intraparenchymal_row.values[0]) > 0.0:
+                convert_to_jpeg(TRAIN + f_name + '.dcm', DATA + CLASSES[2] + '/' + f_name + '.jpg')
+                intraparenchymal.add(f_name + '.dcm')
 
-            pbar.update(1)
+            intraventricular_row = csv.loc[f_name + '_intraventricular']
+            if float(intraventricular_row.values[0]) > 0.0:
+                convert_to_jpeg(TRAIN + f_name + '.dcm', DATA + CLASSES[3] + '/' + f_name + '.jpg')
+                intraventricular.add(f_name + '.dcm')
+
+            subarachnoid_row = csv.loc[f_name + '_subarachnoid']
+            if float(subarachnoid_row.values[0]) > 0.0:
+                convert_to_jpeg(TRAIN + f_name + '.dcm', DATA + CLASSES[4] + '/' + f_name + '.jpg')
+                subarachnoid.add(f_name + '.dcm')
+
+        else:
+            convert_to_jpeg(TRAIN + f_name + '.dcm', DATA +NONE + f_name + '.jpg')
+            none.add(f_name + '.dcm')
+
+    print()
+
+    print('subdural intersection none: {}'.format(str(none.intersection(subdural))))
+    print('epidural intersection none: {}'.format(str(none.intersection(epidural))))
+    print('intraparenchymal intersection none: {}'.format(str(none.intersection(intraparenchymal))))
+    print('intraventricular intersection none: {}'.format(str(none.intersection(intraventricular))))
+    print('subarachnoid intersection none: {}'.format(str(none.intersection(subarachnoid))))
+

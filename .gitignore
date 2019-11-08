@@ -4,3 +4,12 @@ data/*
 *.npz
 stage_1_test_images/*
 stage_1_train_images/*
+__pycache__
+.ipynb_checkpoints
+rec/*
+.git
+.vscode
+models/*
+test/*
+mxnet_logs
+*.ipynb
